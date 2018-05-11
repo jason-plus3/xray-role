@@ -1,0 +1,125 @@
+---
+
+#===============================
+# System prep
+- name: Install Java 1.8 and some basic dependencies
+  yum: 
+    name: "{{ item }}"
+    state: present
+  with_items:
+   - unzip
+   - java-1.8.0-openjdk
+   - libselinux-python
+   - libsemanage-python
+   - logrotate
+
+- name: Add group "{{xray_group}}"
+  group: 
+    name: "{{ xray_group }}"
+
+- name: Add user "{{ xray_user }}"
+  user: 
+    name: "{{ xray_user }}"
+    group: "{{ xray_group }}"
+    home: /usr/share/jboss-as
+
+- name: Create temp working dir for xray installer
+  tempfile:
+    state: directory
+    prefix: ansible-xray
+  register: xray_tempdir
+
+
+#===============================
+# Install
+
+#- name: Download Xray bintray
+#  get_url: 
+#    url: "{{ xray_url }}"
+#    dest: "{{ xray_tempdir }}"
+
+- name: Extract xray archive
+  unarchive: 
+    src: "{{ xray_archive }}"
+    dest: "{{ xray_tempdir.path }}"
+
+- name: Copying installer.info configuration file
+  template: 
+    src: installer.info 
+    dest: "{{ xray_tempdir.path }}/{{ xray_basename }}"
+
+
+- name: Run Xray installer
+  shell: "yes | {{ xray_tempdir.path }}/{{ xray_basename }}/installXray-{{ xray_targetOs }}.sh"
+  args:
+    chdir: "{{ xray_tempdir.path }}/{{ xray_basename }}"
+#  register: xray_install
+#- debug: var=xray_install.stdout_lines
+#- debug: var=xray_install.stderr_lines
+
+
+#===============================
+# Startup and config
+
+- name: Start Xray service
+  shell: "yes | {{ xray_start_script }} start all"
+#  register: xray_service
+#- debug: var=xray_service.stdout_lines
+#- debug: var=xray_service.stderr_lines
+
+- name: "Creating MongoDB Configuration script"
+  template:
+    src: configuration-mongo.js
+    dest: "{{ xray_tempdir.path }}"
+
+
+- name: Configure mongo db in {{ xray_tempdir.path }}
+  shell: "mongo xray {{ xray_tempdir.path }}/configuration-mongo.js"
+  args:
+    chdir: "{{ xray_tempdir.path }}"
+
+#- name: Copy the init script
+#  copy: 
+#    src: jboss-as-standalone.sh 
+#    dest: /etc/init.d/jboss 
+#    mode: 0755
+
+# - name: Workaround for systemd bug
+#   shell: service xray start && chkconfig xray on
+#   ignore_errors: yes
+
+# - name: Enable Xray to be started at boot
+#   service: 
+#     name: jboss 
+#     enabled: yes 
+#     state: started
+
+# - name: deploy iptables rules
+#   template: 
+#     src: iptables-save 
+#     dest: /etc/sysconfig/iptables
+#   when: ansible_distribution_major_version != "7" 
+#   notify: restart iptables
+
+# - name: Ensure that firewalld is installed
+#   yum: 
+#     name: firewalld 
+#     state: present
+#   when: ansible_distribution_major_version == "7" 
+
+# - name: Ensure that firewalld is started
+#   service: 
+#     name: firewalld 
+#     state: started
+#   when: ansible_distribution_major_version == "7" 
+
+# - name: deploy firewalld rules
+#   firewalld: 
+#     immediate: yes 
+#     port: "{{ item }}" 
+#     state: enabled 
+#     permanent: yes
+#   when: ansible_distribution_major_version == "7"
+#   with_items:
+#   - "{{ http_port }}/tcp"
+#   - "{{ https_port }}/tcp"

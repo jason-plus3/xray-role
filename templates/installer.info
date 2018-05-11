@@ -1,0 +1,20 @@
+export XRAY_FIRST_NODE=f5dff9b2f0bd
+export HA_INSTALLATION=false
+export INSTALL_RABBIT=y
+
+{% if xray_postgressql_connection is defined %}
+export INSTALL_POSTGRES=n
+export POSTGRES_CONNECTION_STRING='{{ xray_postgressql_connection }}'
+{% else %}
+export INSTALL_POSTGRES=y
+export POSTGRES_CONNECTION_STRING=
+{% endif %}
+
+{% if xray_mongo_connection is defined %}
+export INSTALL_MONGO=n
+export MONGO_CONNECTION_STRING='{{ xray_mongo_connection }}'
+{% else %}
+export INSTALL_MONGO=y
+export MONGO_CONNECTION_STRING=
+{% endif %}
+

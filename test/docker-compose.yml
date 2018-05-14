@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  xray:
+    image: plus3-watchmaker-centos7
+    ports:
+      - "8000:8000"
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - .:/ansible
+      - ..:/ansible/roles/xray
+    security_opt:
+      - seccomp:unconfined
+    depends_on:
+      - artifactory
+  artifactory:
+    image:  docker.bintray.io/jfrog/artifactory-pro:latest
+    ports:
+      - "8081:8081"
